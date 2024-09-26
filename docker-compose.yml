@@ -1,0 +1,56 @@
+version: '3.2'
+# creating new volume
+volumes:
+  jenkins-data:
+  docker-certs-ca:
+  docker-certs-client:
+# creating network called jenkins
+networks:
+  jenkins:
+# contains two containers named dind and jenkins-docker
+services:
+  dind:
+    # pulling image docker:dind
+    image: docker:dind
+    # jenkins network alias with docker
+    networks:
+      jenkins:
+        aliases:
+          - docker
+    privileged: true
+    user: root
+    # environment
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    # volumes
+    volumes:
+      - docker-certs-ca:/certs/ca
+      - docker-certs-client:/certs/client
+      - jenkins-data:/var/jenkins_home
+    container_name: dind
+
+  jenkins:
+    # pulling image jenkins/jenkins:lts-jdk11 from dockerhub
+    image: jenkins/jenkins:lts-jdk11
+    build: .
+    restart: unless-stopped
+    # uses network jenkins
+    networks:
+      - jenkins
+    privileged: true
+    user: root
+    # container is exposed to ports 8080 and 50000
+    ports:
+      - 8080:8080
+      - 50000:50000
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - docker-certs-client:/certs/client:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_HOST=tcp://docker:2376
+      - DOCKER_CERT_PATH=/certs/client
+      - DOCKER_TLS_VERIFY=1
+    container_name: jenkins-docker
+
+
